@@ -175,15 +175,19 @@ elif task == "Visit Mode Prediction":
 
         result = predict(input_features, model_name)
 
-        # --- PROPER FIX ---
-        if isinstance(result, str):
-            predicted_mode = result
-        else:
-            try:
-                mode_id = int(result)
-                predicted_mode = reverse_mapping.get(mode_id, str(result))
-            except:
-                predicted_mode = str(result)
+        # --- REBUILD CORRECT MAPPING FROM DATA ---
+        unique_modes = sorted(data["VisitMode"].unique())
+
+        # LabelEncoder sorts classes alphabetically by default
+        reconstructed_mapping = {
+            i: mode for i, mode in enumerate(unique_modes)
+        }
+
+        try:
+            mode_id = int(result)
+            predicted_mode = reconstructed_mapping.get(mode_id, str(result))
+        except:
+            predicted_mode = str(result)
 
         st.metric("Predicted Visit Mode", predicted_mode)
 
@@ -255,3 +259,4 @@ mode_chart = px.pie(
 st.plotly_chart(mode_chart, use_container_width=True)
 
 st.success("System Ready")
+
