@@ -58,14 +58,12 @@ task = st.sidebar.selectbox(
     ["Rating Prediction", "Visit Mode Prediction", "Attraction Recommendation"]
 )
 
-# Only show model selection for prediction tasks
 if task in ["Rating Prediction", "Visit Mode Prediction"]:
     model_name = st.sidebar.selectbox(
         "Select Model",
         list(models.keys())
     )
 
-# Sliders (used only for prediction)
 visit_year = st.sidebar.slider("Visit Year", 2020, 2026, 2024)
 visit_month = st.sidebar.slider("Visit Month", 1, 12, 6)
 avg_rating = st.sidebar.slider("Average Rating", 1.0, 5.0, 4.0)
@@ -122,7 +120,7 @@ def recommend_attractions(selected_type=None, top_n=5):
     return recommendations
 
 # --------------------------------------------------
-# MAIN TASK LOGIC
+# MAIN TASKS
 # --------------------------------------------------
 
 # 1️⃣ Rating Prediction
@@ -144,7 +142,7 @@ if task == "Rating Prediction":
         st.metric("Predicted Rating", round(float(result), 2))
 
 
-# 2️⃣ Visit Mode Prediction
+# 2️⃣ Visit Mode Prediction (FIXED PROPERLY)
 elif task == "Visit Mode Prediction":
 
     st.subheader("Visit Mode Prediction")
@@ -160,13 +158,28 @@ elif task == "Visit Mode Prediction":
 
         result = predict(input_features, model_name)
 
-        mode_id = int(result)
-        predicted_mode = visitmode_mapping.get(mode_id, "Unknown")
+        # ---- FIX START ----
+        try:
+            mode_id = int(result)
+
+            # Auto reverse mapping
+            reverse_mapping = {v: k for k, v in visitmode_mapping.items()}
+
+            predicted_mode = reverse_mapping.get(mode_id)
+
+            # If mapping fails, show original result
+            if predicted_mode is None:
+                predicted_mode = str(result)
+
+        except:
+            # If model already outputs string
+            predicted_mode = str(result)
+        # ---- FIX END ----
 
         st.metric("Predicted Visit Mode", predicted_mode)
 
 
-# 3️⃣ Attraction Recommendation
+# 3️⃣ Attraction Recommendation (No Button Needed)
 elif task == "Attraction Recommendation":
 
     st.subheader("Recommended Attractions")
@@ -180,9 +193,8 @@ elif task == "Attraction Recommendation":
 
     st.dataframe(recommendations)
 
-
 # --------------------------------------------------
-# Business Insights (Always Visible)
+# Business Insights (Static Section)
 # --------------------------------------------------
 st.markdown("---")
 st.subheader("Tourism Business Insights")
@@ -217,7 +229,6 @@ with col2:
     )
 
     st.plotly_chart(type_chart, use_container_width=True)
-
 
 # --------------------------------------------------
 # Visit Mode Distribution
