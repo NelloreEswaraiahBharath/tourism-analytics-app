@@ -46,7 +46,9 @@ artifacts, models, data = load_system()
 
 scaler = artifacts["scaler"]
 features = artifacts["features"]
-visitmode_mapping = artifacts["visitmode_mapping"]
+
+# 🔥 Important: Load LabelEncoder
+visitmode_encoder = artifacts["visitmode_encoder"]
 
 # --------------------------------------------------
 # Sidebar Controls
@@ -142,7 +144,7 @@ if task == "Rating Prediction":
         st.metric("Predicted Rating", round(float(result), 2))
 
 
-# 2️⃣ Visit Mode Prediction (FIXED PROPERLY)
+# 2️⃣ Visit Mode Prediction (FINAL CORRECT FIX)
 elif task == "Visit Mode Prediction":
 
     st.subheader("Visit Mode Prediction")
@@ -158,23 +160,13 @@ elif task == "Visit Mode Prediction":
 
         result = predict(input_features, model_name)
 
-        # ---- FIX START ----
         try:
-            mode_id = int(result)
-
-            # Auto reverse mapping
-            reverse_mapping = {v: k for k, v in visitmode_mapping.items()}
-
-            predicted_mode = reverse_mapping.get(mode_id)
-
-            # If mapping fails, show original result
-            if predicted_mode is None:
-                predicted_mode = str(result)
-
+            # 🔥 Decode using LabelEncoder
+            predicted_mode = visitmode_encoder.inverse_transform(
+                [int(result)]
+            )[0]
         except:
-            # If model already outputs string
             predicted_mode = str(result)
-        # ---- FIX END ----
 
         st.metric("Predicted Visit Mode", predicted_mode)
 
@@ -193,8 +185,9 @@ elif task == "Attraction Recommendation":
 
     st.dataframe(recommendations)
 
+
 # --------------------------------------------------
-# Business Insights (Static Section)
+# Business Insights
 # --------------------------------------------------
 st.markdown("---")
 st.subheader("Tourism Business Insights")
@@ -229,6 +222,7 @@ with col2:
     )
 
     st.plotly_chart(type_chart, use_container_width=True)
+
 
 # --------------------------------------------------
 # Visit Mode Distribution
