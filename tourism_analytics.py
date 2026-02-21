@@ -46,9 +46,24 @@ artifacts, models, data = load_system()
 
 scaler = artifacts["scaler"]
 features = artifacts["features"]
+visitmode_mapping = artifacts["visitmode_mapping"]
 
-# 🔥 Important: Load LabelEncoder
-visitmode_encoder = artifacts["visitmode_encoder"]
+# --------------------------------------------------
+# SAFE REVERSE MAPPING (AUTO DETECT)
+# --------------------------------------------------
+# Detect mapping direction automatically
+try:
+    first_key = list(visitmode_mapping.keys())[0]
+
+    if isinstance(first_key, str):
+        # Format: {"Business":0}
+        reverse_mapping = {v: k for k, v in visitmode_mapping.items()}
+    else:
+        # Format: {0:"Business"}
+        reverse_mapping = visitmode_mapping
+
+except:
+    reverse_mapping = {}
 
 # --------------------------------------------------
 # Sidebar Controls
@@ -144,7 +159,7 @@ if task == "Rating Prediction":
         st.metric("Predicted Rating", round(float(result), 2))
 
 
-# 2️⃣ Visit Mode Prediction (FINAL CORRECT FIX)
+# 2️⃣ Visit Mode Prediction (FULLY FIXED)
 elif task == "Visit Mode Prediction":
 
     st.subheader("Visit Mode Prediction")
@@ -160,18 +175,20 @@ elif task == "Visit Mode Prediction":
 
         result = predict(input_features, model_name)
 
-        try:
-            # 🔥 Decode using LabelEncoder
-            predicted_mode = visitmode_encoder.inverse_transform(
-                [int(result)]
-            )[0]
-        except:
-            predicted_mode = str(result)
+        # --- PROPER FIX ---
+        if isinstance(result, str):
+            predicted_mode = result
+        else:
+            try:
+                mode_id = int(result)
+                predicted_mode = reverse_mapping.get(mode_id, str(result))
+            except:
+                predicted_mode = str(result)
 
         st.metric("Predicted Visit Mode", predicted_mode)
 
 
-# 3️⃣ Attraction Recommendation (No Button Needed)
+# 3️⃣ Attraction Recommendation
 elif task == "Attraction Recommendation":
 
     st.subheader("Recommended Attractions")
@@ -184,7 +201,6 @@ elif task == "Attraction Recommendation":
     recommendations = recommend_attractions(attraction_type)
 
     st.dataframe(recommendations)
-
 
 # --------------------------------------------------
 # Business Insights
@@ -222,7 +238,6 @@ with col2:
     )
 
     st.plotly_chart(type_chart, use_container_width=True)
-
 
 # --------------------------------------------------
 # Visit Mode Distribution
