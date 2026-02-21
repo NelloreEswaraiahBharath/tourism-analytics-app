@@ -46,24 +46,23 @@ artifacts, models, data = load_system()
 
 scaler = artifacts["scaler"]
 features = artifacts["features"]
-visitmode_mapping = artifacts["visitmode_mapping"]
+visitmode_mapping = artifacts.get("visitmode_mapping", {})
 
 # --------------------------------------------------
-# SAFE REVERSE MAPPING (AUTO DETECT)
+# SAFE VISIT MODE MAPPING FIX
 # --------------------------------------------------
-# Detect mapping direction automatically
-try:
+reverse_mapping = {}
+
+if isinstance(visitmode_mapping, dict) and len(visitmode_mapping) > 0:
     first_key = list(visitmode_mapping.keys())[0]
 
-    if isinstance(first_key, str):
-        # Format: {"Business":0}
-        reverse_mapping = {v: k for k, v in visitmode_mapping.items()}
-    else:
-        # Format: {0:"Business"}
+    # If mapping format is {0: 'Business'}
+    if isinstance(first_key, int):
         reverse_mapping = visitmode_mapping
 
-except:
-    reverse_mapping = {}
+    # If mapping format is {'Business': 0}
+    else:
+        reverse_mapping = {v: k for k, v in visitmode_mapping.items()}
 
 # --------------------------------------------------
 # Sidebar Controls
@@ -90,7 +89,6 @@ num_visits = st.sidebar.slider("Number of Past Visits", 1, 100, 10)
 # Feature Builder
 # --------------------------------------------------
 def make_features(year, month, avg_rating, num_visits):
-
     vec = np.zeros(len(features))
 
     mapping = {
@@ -110,17 +108,14 @@ def make_features(year, month, avg_rating, num_visits):
 # Prediction Function
 # --------------------------------------------------
 def predict(features_vec, model_name):
-
     X_scaled = scaler.transform(features_vec)
     prediction = models[model_name].predict(X_scaled)[0]
-
     return prediction
 
 # --------------------------------------------------
 # Recommendation Function
 # --------------------------------------------------
 def recommend_attractions(selected_type=None, top_n=5):
-
     df = data.copy()
 
     if selected_type:
@@ -146,7 +141,6 @@ if task == "Rating Prediction":
     st.subheader("Attraction Rating Prediction")
 
     if st.button("Predict Rating"):
-
         input_features = make_features(
             visit_year,
             visit_month,
@@ -155,11 +149,10 @@ if task == "Rating Prediction":
         )
 
         result = predict(input_features, model_name)
-
         st.metric("Predicted Rating", round(float(result), 2))
 
 
-# 2️⃣ Visit Mode Prediction (FULLY FIXED)
+# 2️⃣ Visit Mode Prediction (🔥 FULLY FIXED)
 elif task == "Visit Mode Prediction":
 
     st.subheader("Visit Mode Prediction")
@@ -175,19 +168,16 @@ elif task == "Visit Mode Prediction":
 
         result = predict(input_features, model_name)
 
-        # --- REBUILD CORRECT MAPPING FROM DATA ---
-        unique_modes = sorted(data["VisitMode"].unique())
-
-        # LabelEncoder sorts classes alphabetically by default
-        reconstructed_mapping = {
-            i: mode for i, mode in enumerate(unique_modes)
-        }
-
         try:
             mode_id = int(result)
-            predicted_mode = reconstructed_mapping.get(mode_id, str(result))
+
+            if mode_id in reverse_mapping:
+                predicted_mode = reverse_mapping[mode_id]
+            else:
+                predicted_mode = "Unknown"
+
         except:
-            predicted_mode = str(result)
+            predicted_mode = "Unknown"
 
         st.metric("Predicted Visit Mode", predicted_mode)
 
@@ -259,4 +249,3 @@ mode_chart = px.pie(
 st.plotly_chart(mode_chart, use_container_width=True)
 
 st.success("System Ready")
-
